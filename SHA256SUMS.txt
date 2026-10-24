@@ -1,0 +1,2 @@
+e5cca47f2c5c7916a6a05a2224788468f1e9af72d75d54632a7a280b65ed06ff  Author-Vault-Setup.exe
+9eb066847fc04f3a37ab47d6b8717a63b7cda633980677c363d9b9d53d7a563c  Author-Vault-Universal-Windows.zip
