@@ -2,43 +2,39 @@
 
 **[Download Author-Vault-Setup.exe](https://github.com/Knight-Logics/author-vault/releases/latest/download/Author-Vault-Setup.exe)**
 
-Open the download and choose **Install / Open Author Vault 1.4**. It includes the full app and creates an **Author Vault 1.4** desktop icon. Windows 10/11 users do not need to install developer tools or manage support folders.
+Close Author Vault and let any backup finish. Open this download and choose **Install / Open Author Vault 1.5** once. Then use the **Author Vault** desktop icon. The installer includes the full app; Windows 10/11 users need no developer tools or separate support-folder setup.
 
-[Full ZIP alternative](https://github.com/Knight-Logics/author-vault/releases/latest/download/Author-Vault-Universal-Windows.zip) · [Release notes and checksums](https://github.com/Knight-Logics/author-vault/releases/latest) · [Instructions and troubleshooting](USER-GUIDE.md)
+[Full ZIP alternative](https://github.com/Knight-Logics/author-vault/releases/latest/download/Author-Vault-Universal-Windows.zip) · [Release notes and checksums](https://github.com/Knight-Logics/author-vault/releases/latest) · [Full instructions](USER-GUIDE.md)
 
-## Updating an existing installation
+## What version 1.5 changes
 
-Close older Author Vault windows, open the new version, review **Folders & drive**, and **Save backup plan**. Add missing Music, Pictures and Videos folders. Existing passphrase, originals and backup history are preserved. Follow the current-step button through backup, restored-file verification and scheduling again.
+- Future signed updates install automatically while Author Vault is closed and no backup is running. A small watcher checks the official release about once daily, independently of whether backup setup has finished.
+- Program updates preserve the folder plan, recovery passphrase, restore verification, enabled/paused state, backup history and registered Windows task. Program replacement has checksum checks, a rollback copy and an interruption journal.
+- **Updates & status for Nick** lets you check/install updates and copy a report covering version, backup time, schedule/launch verification and update status. No filenames, source paths, passwords or file contents are included or sent automatically.
+- Recovery of files ending in `.zip`, `.tar` or similar names uses normal file output instead of letting the engine infer archive output from the filename.
+- All saved regular file formats are included inside selected folders. Music, Pictures and Videos need their actual folders selected if outside Documents. Unknown extensions and files without extensions are included too.
 
-## Four setup steps
+**Install 1.5 manually once to add the automatic updater.** Older copies cannot acquire a feature they do not yet have. Update downloads require internet; backups remain local and work offline. The first installer remains unsigned by Authenticode; the updater's pinned RSA signature verification is separate.
 
-1. Select the actual document AND media folders and a separate external HDD. Save the plan and record the recovery passphrase separately.
-2. Back up. Review the per-folder music/image/video counts.
-3. Restore a file and open the restored copy to check it.
-4. Enable daily protection. The app verifies Windows' actual task definition and an actual task launch before reporting success.
+## First setup or adding missing folders
 
-**A manual backup alone does not enable scheduling.** The updated interface shows the current stage and what remains.
+1. Select document AND media folders and a separate external HDD. Save the plan and record the recovery passphrase separately.
+2. Back up. Review per-folder file and media counts.
+3. Restore a file, open the restored copy and check it.
+4. Enable daily protection. The app reads back Windows' task definition and verifies an actual task launch before reporting success.
 
-The HDD contains encrypted archives; normal JPG/MP3/MP4/documents are recovered through **Restore & history**. They are not ordinary browsable mirror copies on the HDD.
+**Manual backup alone does not enable scheduling.** Follow the current-step button. Adding folders changes the plan and requires a fresh backup and recovery check; a program-only update preserves existing activation.
 
-## Version 1.4 improvements
+Use **Check schedule** and **Test Windows task launch**, then **Updates & status for Nick → Copy status for Nick** to share results privately. No automatic client telemetry is collected.
 
-- Media-folder selection in both interfaces, per-folder file/type counts, and support for empty selected folders when the plan contains other saved files.
-- A guided restore check that advances from stage 3 to scheduling.
-- Read-back of actual Windows tasks, task-launch testing, and detection/repair of changed daily schedules.
-- A self-contained installer with embedded-package and extracted-file integrity checks.
-- Clear version/mode identification and preservation of existing plans/history during updates.
+## Validation and limits
 
-303 automated checks passed across backup safety, mixed-media recovery, task registration/launch/repair, native GUI flow, final ZIP extraction and the installer. Both backup modes completed actual scheduled backup and recovery using synthetic files. Tests ran on current Windows, including the x86 Classic app. Actual Windows 7/8 hardware was unavailable; see the guide for compatibility limits.
+376 automated checks passed across encryption/recovery, mixed media and arbitrary file formats, original-file preservation, actual Windows task registration/launch/repair, native GUI flow, installer extraction, program upgrades and signed-update rejection/rollback safeguards. The upgrade tests preserved daily task definitions and launched both upgraded worker modes through Windows. The isolated idle update watcher used about 32 MB of memory in the installer trial.
 
-## Privacy and security
+Tests used synthetic data on current Windows, including the x86 Classic app. Stephen's exact computers and older Windows installations were not physically tested. The app cannot back up an off/asleep PC, an absent/unlocked-required HDD, unsaved edits or online-only files that have not been downloaded. No software can guarantee hardware or Windows never fails. Keep the account signed in, the HDD connected/unlocked and the recovery passphrase separately; maintain another independent copy.
 
-Only application downloads and documentation are distributed here. No manuscripts, media, client settings or passwords are uploaded. Backup contents stay local and encrypted; saved credentials use Windows DPAPI. Originals and old versions are preserved. Restores create new folders. The app does not format drives or prune history to clear space.
+Originals and old versions are preserved. Restore creates new folders. The app never formats drives or prunes backup history to clear space. The HDD contains encrypted archives, which are recovered through **Restore & history**.
 
-Keep the PC awake, the same account signed in and the HDD connected/unlocked. Missing/full/failing drives, unsaved edits, online-only files or Windows permissions can still require attention. Keep the recovery passphrase separately. No software can guarantee that hardware never fails.
+Modern mode normally serves Windows 10/11 x64. Classic serves 32-bit/older compatible installations and existing Classic plans. The modes use different interfaces and archive formats. BIOS age and RAM do not choose the mode. See the guide for compatibility and upstream engine licenses/source links.
 
-The executable is currently unsigned. Verify the official release and SHA-256 checksums. Do not disable antivirus to run an unverified file.
-
-Modern mode normally serves Windows 10/11 x64. Classic serves 32-bit/older compatible installations and existing Classic plans. The interfaces and archive formats differ; BIOS age and RAM do not choose the mode. Full details, dependencies, third-party licenses and upstream engine source links are in the guide and package.
-
-Built by Knight Logics. This repository distributes releases and user instructions; development source is maintained separately.
+This repository distributes only releases and user instructions. Client files, credentials and development-only materials are not uploaded. Built by Knight Logics.

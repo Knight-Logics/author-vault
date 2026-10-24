@@ -1,16 +1,24 @@
-# Author Vault 1.4
+# Author Vault 1.5
 
-Download the **Author-Vault-Setup.exe** release asset from the Knight Logics repository. Open it and choose **Install / Open Author Vault 1.4**. It includes the entire application; no separate tools, terminal or developer installation is needed on Windows 10/11. The installer creates **Author Vault 1.4** on the desktop.
+Download the **Author-Vault-Setup.exe** release asset from the Knight Logics repository. Open it and choose **Install / Open Author Vault 1.5**. It includes the entire application; no separate tools, terminal or developer installation is needed on Windows 10/11. The installer creates **Author Vault 1.5** on the desktop.
 
 The alternative **Author-Vault-Universal-Windows.zip** contains the same app. Extract the entire folder and open **Open Author Vault.exe**. Keep the support folder together. The ZIP also includes the Classic compatibility route for Windows 7 SP1/8/8.1, provided the required Windows desktop framework is present. Those older operating systems were not physically tested. The single EXE installer requires .NET Framework 4.5 or newer, included with Windows 10.
 
 ## Updating a computer that already has Author Vault
 
-Close existing Author Vault windows. Run the new installer, then use the new **Author Vault 1.4** desktop icon. Do not use the old icon until the update has been saved.
+Close existing Author Vault windows, download the latest **Author-Vault-Setup.exe**, and choose **Install / Open Author Vault 1.5** once. After that, use the **Author Vault** desktop icon. This installer updates existing Modern and Classic program files directly. The saved plan, recovery passphrase, restore verification, enabled/paused state, backup history and registered daily task are preserved. Program history and a recovery journal protect interrupted replacements. If setup reports that a backup or another app window is busy, let it finish, close Author Vault, and run the installer again. Do not remove application state or backup folders.
 
-The app loads the existing plan for the current Windows account. Open **Folders & drive**, review the selected paths, add any missing media folders, confirm the connected external HDD, and **Save backup plan**. This copies the new program into its permanent location while preserving the existing recovery passphrase, originals and backup history. Program files that change are retained in a program-history folder. If an update cannot finish, automatic protection stays pending and the error is shown; retry after closing other app windows.
+To add previously missed Music, Pictures or Videos folders, open the plan, add their actual locations and save. Changing the plan still requires a fresh backup, restored-file check and final schedule activation. A program-only update does not reset those steps or silently enable an unfinished plan.
 
-Saving a plan requires a fresh backup and restored-file check. The app deliberately does not silently enable a changed plan.
+## Automatic updates and status for Nick
+
+Automatic updates are enabled by default. A small update watcher starts at Windows sign-in and checks the official GitHub release about once daily. An available release installs while Author Vault is closed and no backup/plan operation is running. It retries deferred installations later. The updater verifies the release's pinned RSA signature, exact download location, signed size and SHA-256 checksum before execution. Older versions are refused. No backup process is stopped to install an update. Windows must be on, this account signed in, and internet access available for updates; backups themselves remain local and work offline. Windows startup restrictions, security software or unavailable internet can prevent updates, so the manual download link remains available.
+
+In **Protection & help** (Classic: **Help**), open **Updates & status for Nick**. You can check updates, install an available verified update, or turn automatic idle updates off. The preview contains only version, Windows/mode, selected folder count, backup state/time, schedule/launch verification and update status. Press **Copy status for Nick** or **Save report**, review it, then send it to Nick through your usual private channel. Nothing is sent automatically. Use **Check schedule** and **Test Windows task launch** first for fresh task information. Blank values mean unavailable, not success. Local raw logs may contain filenames; use this report instead of sharing the state folder.
+
+Future update packages download from GitHub. No manuscript, filename, source path, password or backup content is uploaded by the update checker. GitHub receives the normal download request and IP address. The first installer is not Authenticode-signed and Windows may show an unknown publisher; the signed update manifest is a separate verification mechanism.
+
+If power is lost in the middle of a program update, rerun the same official installer. It uses the program recovery journal before retrying. Do not clear a pending marker by hand. Existing original files and encrypted backup history are outside the updater's targets.
 
 ## Four setup steps — follow the current-step button
 
@@ -29,7 +37,7 @@ Modern mode uses a Kopia filesystem repository. Classic mode uses dated encrypte
 
 ## Why are the interfaces different?
 
-The title/account area shows **1.4**, Windows/build, bitness, and the selected mode. Windows 10/11 with 64-bit Windows normally uses modern mode. 32-bit Windows or older compatible installations use Classic. A modern component compatibility failure is explained before Classic opens, and an existing modern plan is not silently switched to a different archive engine. CPU speed, installed RAM and BIOS date do not choose the interface.
+The title/account area shows **1.5**, Windows/build, bitness, and the selected mode. Windows 10/11 with 64-bit Windows normally uses modern mode. 32-bit Windows or older compatible installations use Classic. A modern component compatibility failure is explained before Classic opens, and an existing modern plan is not silently switched to a different archive engine. CPU speed, installed RAM and BIOS date do not choose the interface.
 
 ## Daily use and recovery
 
@@ -39,7 +47,7 @@ Save and close applications before the first full backup and recovery test. Unsa
 
 Originals are not moved, mirrored or automatically deleted. Historical backup versions are not pruned to clear space. Recovery writes new folders and refuses to overwrite originals. Classic creates full archives and can consume more disk space; a larger HDD may eventually be needed. The app never formats a drive.
 
-Keep the recovery passphrase separately: losing the PC's saved Windows credential without the passphrase can make encrypted backups unrecoverable. It is protected locally with Windows DPAPI; it is not placed in task arguments. There is no cloud backup or manuscript upload. Downloading the app from GitHub uploads none of your files or settings. Public release files contain program files and documentation only.
+Keep the recovery passphrase separately: losing the PC's saved Windows credential without the passphrase can make encrypted backups unrecoverable. It is protected locally with Windows DPAPI; it is not placed in task arguments. There is no cloud backup or manuscript upload. Update checks contact GitHub only for application downloads. Downloading the app from GitHub uploads none of your files or settings. Public release files contain program files and documentation only.
 
 ## If setup fails
 
