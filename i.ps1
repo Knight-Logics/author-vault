@@ -2,8 +2,8 @@
 # Downloads the backup program, checks it is exactly the expected file, then runs setup.
 $ErrorActionPreference = 'Stop'
 try { [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor 3072 } catch {}
-$url  = 'https://raw.githubusercontent.com/Knight-Logics/author-vault/dcd9abf761f4da8a5e43c0e704c333d075df25b0/DocumentsBackup.ps1'
-$want = '69C7B35C9A8301301EDA06C955ED1519B9CE9F1EC654EE045CCFB35178D90937'
+$url  = 'https://raw.githubusercontent.com/Knight-Logics/author-vault/eda890c77d44fec7dca68bd3ef5c2539678c6d28/DocumentsBackup.ps1'
+$want = '92E090522E08D0442EB2B526DD6ABDC5F978F2C4245A68C72ED9746AC722557E'
 $dir  = Join-Path $env:LOCALAPPDATA 'KnightLogics\DocumentsBackup'
 New-Item -ItemType Directory -Force -Path $dir | Out-Null
 $tmp  = Join-Path $dir 'DocumentsBackup.download'
