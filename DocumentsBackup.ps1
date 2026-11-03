@@ -1,6 +1,6 @@
 <#
     Knight Logics - Documents Backup
-    Version 1.0.1
+    Version 1.0.2
 
     Keeps a plain, readable copy of the Documents folder on the external backup drive:
 
@@ -28,7 +28,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$script:Version      = '1.0.1'
+$script:Version      = '1.0.2'
 $script:TaskName     = 'Knight Logics - Documents Backup'
 $script:RunKeyName   = 'KnightLogicsDocumentsBackup'
 $script:AppDir       = Join-Path $env:LOCALAPPDATA 'KnightLogics\DocumentsBackup'
@@ -995,7 +995,10 @@ function Invoke-Backup([switch]$Manual) {
     $cfg = $null
     try {
         if ([System.IO.File]::Exists((PathJoin $script:AppDir 'PAUSED'))) { Write-Log 'Backups are paused (a PAUSED file is in the program folder).'; return $null }
-        if (-not $Manual) {
+        $runNowFlag = PathJoin $script:AppDir 'run-now.flag'
+        $forced = [System.IO.File]::Exists($runNowFlag)
+        if ($forced) { try { Remove-FileForce $runNowFlag } catch {} }
+        if (-not $Manual -and -not $forced) {
             $last = Get-DateVal $state 'LastCompleted'
             if ($last -and ((Get-Date) - $last).TotalMinutes -lt 20 -and ((Get-Date) - $last).TotalMinutes -ge 0) { return $null }
         }
@@ -1352,15 +1355,27 @@ function Invoke-PostInstallCheck([string]$Docs, [string]$CurrentRoot) {
     return $result
 }
 
+# Starts the real scheduled task (hidden, as the normal signed-in account) and waits for it to
+# finish a full check of Documents against the backup - proves the automatic run works end to end.
 function Test-ScheduledLaunch {
-    $before = Get-Val (Read-State) 'LastLaunch'
-    try { Start-ScheduledTask -TaskName $script:TaskName -ErrorAction Stop | Out-Null } catch { return ("could not start it: " + (Get-ErrText $_)) }
-    for ($i = 0; $i -lt 30; $i++) {
+    $s0 = Read-State
+    $launch0 = Get-Val $s0 'LastLaunch'
+    $done0 = Get-Val $s0 'LastCompleted'
+    [System.IO.File]::WriteAllText((PathJoin $script:AppDir 'run-now.flag'), (NowText))
+    try { Start-ScheduledTask -TaskName $script:TaskName -ErrorAction Stop | Out-Null } catch { return ('FAILED - could not start it: ' + (Get-ErrText $_)) }
+    $started = $false
+    for ($i = 0; $i -lt 90; $i++) {
         Start-Sleep -Seconds 2
-        $nowVal = Get-Val (Read-JsonFile (PathJoin $script:AppDir 'state.json')) 'LastLaunch'
-        if ($nowVal -and $nowVal -ne $before) { return 'OK' }
+        $s = Read-JsonFile (PathJoin $script:AppDir 'state.json')
+        $l = Get-Val $s 'LastLaunch'
+        $d = Get-Val $s 'LastCompleted'
+        if ($l -and $l -ne $launch0) { $started = $true }
+        if ($d -and $d -ne $done0) { return 'OK - ran invisibly on its own and completed a full check' }
+        $e = Get-Val $s 'LastError'
+        if ($started -and $e -and $e -ne (Get-Val $s0 'LastError')) { return ('FAILED - ' + $e) }
     }
-    return 'it did not report back within 60 seconds'
+    if ($started) { return 'started, but had not finished after 3 minutes (see Backup Status.txt later)' }
+    return 'FAILED - it did not start within 3 minutes'
 }
 
 function Invoke-Install {
