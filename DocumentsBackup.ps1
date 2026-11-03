@@ -1,6 +1,6 @@
 <#
     Knight Logics - Documents Backup
-    Version 1.0.0
+    Version 1.0.1
 
     Keeps a plain, readable copy of the Documents folder on the external backup drive:
 
@@ -28,7 +28,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$script:Version      = '1.0.0'
+$script:Version      = '1.0.1'
 $script:TaskName     = 'Knight Logics - Documents Backup'
 $script:RunKeyName   = 'KnightLogicsDocumentsBackup'
 $script:AppDir       = Join-Path $env:LOCALAPPDATA 'KnightLogics\DocumentsBackup'
@@ -59,7 +59,7 @@ function Get-Parent([string]$P) {
 }
 
 # Long-path-safe form of a path for .NET file calls (only used for very long paths).
-function LP([string]$P) {
+function ToLongPath([string]$P) {
     if ($P.Length -ge 240 -and -not $P.StartsWith('\\?\')) {
         if ($P.StartsWith('\\')) { return '\\?\UNC\' + $P.Substring(2) }
         return '\\?\' + $P
@@ -68,17 +68,17 @@ function LP([string]$P) {
 }
 
 function Ensure-Dir([string]$P) {
-    if (-not [System.IO.Directory]::Exists((LP $P))) { [void][System.IO.Directory]::CreateDirectory((LP $P)) }
+    if (-not [System.IO.Directory]::Exists((ToLongPath $P))) { [void][System.IO.Directory]::CreateDirectory((ToLongPath $P)) }
 }
 
 function Remove-FileForce([string]$P) {
-    $l = LP $P
+    $l = ToLongPath $P
     try { [System.IO.File]::SetAttributes($l, [System.IO.FileAttributes]::Normal) } catch {}
     [System.IO.File]::Delete($l)
 }
 
 function Remove-TreeForce([string]$P) {
-    $l = LP $P
+    $l = ToLongPath $P
     if (-not [System.IO.Directory]::Exists($l)) { return }
     $di = [System.IO.DirectoryInfo]::new($l)
     foreach ($f in $di.GetFiles('*', [System.IO.SearchOption]::AllDirectories)) {
@@ -88,7 +88,7 @@ function Remove-TreeForce([string]$P) {
 }
 
 function Remove-EmptyTree([string]$P) {
-    $di = [System.IO.DirectoryInfo]::new((LP $P))
+    $di = [System.IO.DirectoryInfo]::new((ToLongPath $P))
     if (-not $di.Exists) { return }
     foreach ($sub in $di.GetDirectories()) { Remove-EmptyTree $sub.FullName }
     if ($di.GetFileSystemInfos().Length -eq 0) { $di.Delete() }
@@ -126,7 +126,7 @@ function Get-Sha256([string]$P) {
     $fs = $null
     try {
         $share = [System.IO.FileShare]::ReadWrite -bor [System.IO.FileShare]::Delete
-        $fs = [System.IO.FileStream]::new((LP $P), [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, $share, 1048576)
+        $fs = [System.IO.FileStream]::new((ToLongPath $P), [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, $share, 1048576)
         return [System.BitConverter]::ToString($sha.ComputeHash($fs))
     }
     finally {
@@ -238,7 +238,7 @@ function Get-Tree([string]$Root, [switch]$NoExclude) {
         $rel = $stack.Pop()
         $full = PathJoin $Root $rel
         try {
-            $di = [System.IO.DirectoryInfo]::new((LP $full))
+            $di = [System.IO.DirectoryInfo]::new((ToLongPath $full))
             $subs = $di.GetDirectories()
             $fis = $di.GetFiles()
         } catch {
@@ -288,7 +288,7 @@ function Get-VersionDir([hashtable]$Ctx) {
     $base = $Ctx.RunTime.ToString('yyyy-MM-dd (ddd) HH.mm', $script:Inv)
     $name = $base
     $i = 2
-    while ([System.IO.Directory]::Exists((LP (PathJoin $Ctx.VersionsRoot $name)))) { $name = '{0} ({1})' -f $base, $i; $i++ }
+    while ([System.IO.Directory]::Exists((ToLongPath (PathJoin $Ctx.VersionsRoot $name)))) { $name = '{0} ({1})' -f $base, $i; $i++ }
     $dir = PathJoin $Ctx.VersionsRoot $name
     Ensure-Dir $dir
     $Ctx.Dir = $dir
@@ -302,7 +302,7 @@ function Get-FreeName([string]$P) {
     if ($dot -le 0) { $base = $name; $ext = '' } else { $base = $name.Substring(0, $dot); $ext = $name.Substring($dot) }
     for ($i = 2; $i -lt 1000; $i++) {
         $c = PathJoin $parent ('{0} ({1}){2}' -f $base, $i, $ext)
-        if (-not [System.IO.File]::Exists((LP $c))) { return $c }
+        if (-not [System.IO.File]::Exists((ToLongPath $c))) { return $c }
     }
     throw 'too many copies with the same name'
 }
@@ -311,7 +311,7 @@ function Get-VersionPath([hashtable]$Ctx, [string]$Rel) {
     $dir = Get-VersionDir $Ctx
     $p = PathJoin $dir $Rel
     Ensure-Dir (Get-Parent $p)
-    if ([System.IO.File]::Exists((LP $p))) { $p = Get-FreeName $p }
+    if ([System.IO.File]::Exists((ToLongPath $p))) { $p = Get-FreeName $p }
     return $p
 }
 
@@ -336,8 +336,8 @@ function Get-VersionInfo([string]$Name) {
 }
 
 function Get-VersionFolders([string]$VersionsRoot) {
-    if (-not [System.IO.Directory]::Exists((LP $VersionsRoot))) { return }
-    foreach ($d in [System.IO.DirectoryInfo]::new((LP $VersionsRoot)).GetDirectories()) {
+    if (-not [System.IO.Directory]::Exists((ToLongPath $VersionsRoot))) { return }
+    foreach ($d in [System.IO.DirectoryInfo]::new((ToLongPath $VersionsRoot)).GetDirectories()) {
         $i = Get-VersionInfo $d.Name
         if ($i) { $i }
     }
@@ -357,10 +357,10 @@ function Merge-VersionFolders([string]$VersionsRoot, [string]$TargetName, [strin
         foreach ($kv in $t.Files.GetEnumerator()) {
             $dst = PathJoin $target $kv.Key
             $srcp = PathJoin $dir $kv.Key
-            if ([System.IO.File]::Exists((LP $dst))) { Remove-FileForce $srcp }
+            if ([System.IO.File]::Exists((ToLongPath $dst))) { Remove-FileForce $srcp }
             else {
                 Ensure-Dir (Get-Parent $dst)
-                [System.IO.File]::Move((LP $srcp), (LP $dst))
+                [System.IO.File]::Move((ToLongPath $srcp), (ToLongPath $dst))
             }
         }
         foreach ($tmpRel in $t.Temps) { try { Remove-FileForce (PathJoin $dir $tmpRel) } catch {} }
@@ -432,14 +432,14 @@ function Copy-OneFile {
     $tmp = $Dst + '.kgtmp'
     $in = $null; $out = $null; $sha = $null
     try {
-        $before = [System.IO.FileInfo]::new((LP $Src))
+        $before = [System.IO.FileInfo]::new((ToLongPath $Src))
         $len0 = $before.Length
         $mt0 = $before.LastWriteTimeUtc
         Ensure-Dir (Get-Parent $Dst)
-        if ([System.IO.File]::Exists((LP $tmp))) { Remove-FileForce $tmp }
+        if ([System.IO.File]::Exists((ToLongPath $tmp))) { Remove-FileForce $tmp }
         $share = [System.IO.FileShare]::ReadWrite -bor [System.IO.FileShare]::Delete
-        $in = [System.IO.FileStream]::new((LP $Src), [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, $share, 1048576)
-        $out = [System.IO.FileStream]::new((LP $tmp), [System.IO.FileMode]::CreateNew, [System.IO.FileAccess]::Write, [System.IO.FileShare]::None, 1048576)
+        $in = [System.IO.FileStream]::new((ToLongPath $Src), [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, $share, 1048576)
+        $out = [System.IO.FileStream]::new((ToLongPath $tmp), [System.IO.FileMode]::CreateNew, [System.IO.FileAccess]::Write, [System.IO.FileShare]::None, 1048576)
         $verify = ($len0 -le $script:HashLimit)
         if ($verify) { $sha = [System.Security.Cryptography.SHA256]::Create() }
         $buf = $script:CopyBuffer
@@ -451,14 +451,14 @@ function Copy-OneFile {
         $out.Dispose(); $out = $null
         $in.Dispose(); $in = $null
 
-        $after = [System.IO.FileInfo]::new((LP $Src))
+        $after = [System.IO.FileInfo]::new((ToLongPath $Src))
         if ($after.Length -ne $len0 -or $after.LastWriteTimeUtc -ne $mt0) {
             # Being saved while we copied - try again next run.
             Remove-FileForce $tmp
             $R.ChangedDuring.Add($Rel)
             return $false
         }
-        $copied = [System.IO.FileInfo]::new((LP $tmp))
+        $copied = [System.IO.FileInfo]::new((ToLongPath $tmp))
         if ($copied.Length -ne $len0) { throw ('the copy is {0} bytes but the original is {1} bytes' -f $copied.Length, $len0) }
         if ($verify) {
             [void]$sha.TransformFinalBlock($buf, 0, 0)
@@ -466,19 +466,19 @@ function Copy-OneFile {
             $h2 = Get-Sha256 $tmp
             if ($h1 -ne $h2) { throw 'the copy did not match the original when it was checked' }
         }
-        [System.IO.File]::SetLastWriteTimeUtc((LP $tmp), $mt0)
-        if ([System.IO.File]::Exists((LP $Dst))) {
+        [System.IO.File]::SetLastWriteTimeUtc((ToLongPath $tmp), $mt0)
+        if ([System.IO.File]::Exists((ToLongPath $Dst))) {
             $vp = Get-VersionPath $Ctx $Rel
-            [System.IO.File]::Move((LP $Dst), (LP $vp))
+            [System.IO.File]::Move((ToLongPath $Dst), (ToLongPath $vp))
         }
-        [System.IO.File]::Move((LP $tmp), (LP $Dst))
+        [System.IO.File]::Move((ToLongPath $tmp), (ToLongPath $Dst))
         return $true
     }
     catch {
         $err = $_
         if ($out) { try { $out.Dispose() } catch {}; $out = $null }
         if ($in) { try { $in.Dispose() } catch {}; $in = $null }
-        try { if ([System.IO.File]::Exists((LP $tmp))) { Remove-FileForce $tmp } } catch {}
+        try { if ([System.IO.File]::Exists((ToLongPath $tmp))) { Remove-FileForce $tmp } } catch {}
         if (Test-LockedError $err) { $R.Locked.Add($Rel) }
         else { $R.Errors.Add(("'{0}': {1}" -f $Rel, (Get-ErrText $err))) }
         return $false
@@ -504,7 +504,7 @@ function New-Result {
 function Invoke-Sync {
     param([string]$SourceRoot, [string]$CurrentRoot, [string]$VersionsRoot, [datetime]$RunTime, [bool]$Fat = $false, [int]$DeepVerifyCount = 0)
     $R = New-Result
-    if (-not [System.IO.Directory]::Exists((LP $SourceRoot))) {
+    if (-not [System.IO.Directory]::Exists((ToLongPath $SourceRoot))) {
         $R.Aborted = $true; $R.AbortReason = "the Documents folder '$SourceRoot' could not be found"
         return $R
     }
@@ -572,9 +572,9 @@ function Invoke-Sync {
     foreach ($rel in $toRemove) {
         try {
             $p = PathJoin $CurrentRoot $rel
-            if ([System.IO.File]::Exists((LP $p))) {
+            if ([System.IO.File]::Exists((ToLongPath $p))) {
                 $vp = Get-VersionPath $ctx $rel
-                [System.IO.File]::Move((LP $p), (LP $vp))
+                [System.IO.File]::Move((ToLongPath $p), (ToLongPath $vp))
             }
             $R.Removed++
         } catch {
@@ -591,7 +591,7 @@ function Invoke-Sync {
     $goneDirs = @($cur.Dirs | Where-Object { -not $src.Dirs.Contains($_) -and -not (Test-UnderFailed $_ $src.Failed) } | Sort-Object { $_.Length } -Descending)
     foreach ($d in $goneDirs) {
         try {
-            $di = [System.IO.DirectoryInfo]::new((LP (PathJoin $CurrentRoot $d)))
+            $di = [System.IO.DirectoryInfo]::new((ToLongPath (PathJoin $CurrentRoot $d)))
             if ($di.Exists -and $di.GetFileSystemInfos().Length -eq 0) { $di.Delete() }
         } catch {}
     }
@@ -706,7 +706,7 @@ function Write-RestoreGuide([string]$BackupRoot) {
         ''
         'Set up by Nick Knight, Knight Logics.'
     )
-    try { [System.IO.File]::WriteAllText((LP $p), ($lines -join "`r`n")) } catch {}
+    try { [System.IO.File]::WriteAllText((ToLongPath $p), ($lines -join "`r`n")) } catch {}
 }
 
 function Write-StatusFiles([string]$BackupRoot, [string]$DriveRoot, [string]$Docs, $R) {
@@ -739,12 +739,12 @@ function Write-StatusFiles([string]$BackupRoot, [string]$DriveRoot, [string]$Doc
             $lines += 'Problems:'
             foreach ($x in @($R.Errors | Select-Object -First 20)) { $lines += ('  ' + $x) }
         }
-        [System.IO.File]::WriteAllText((LP (PathJoin $BackupRoot 'Backup Status.txt')), ($lines -join "`r`n"), [System.Text.Encoding]::UTF8)
+        [System.IO.File]::WriteAllText((ToLongPath (PathJoin $BackupRoot 'Backup Status.txt')), ($lines -join "`r`n"), [System.Text.Encoding]::UTF8)
 
         $changed = ($R.New + $R.Updated + $R.Removed + $R.Repaired) -gt 0
         if ($changed -or $R.Aborted -or $R.Locked.Count -or $R.Errors.Count) {
             $h = '{0}   {1}' -f (Get-Date).ToString('yyyy-MM-dd HH:mm', $script:Inv), (Get-ResultText $R)
-            [System.IO.File]::AppendAllText((LP (PathJoin $BackupRoot 'Backup History.txt')), $h + "`r`n", [System.Text.Encoding]::UTF8)
+            [System.IO.File]::AppendAllText((ToLongPath (PathJoin $BackupRoot 'Backup History.txt')), $h + "`r`n", [System.Text.Encoding]::UTF8)
         }
     } catch { Write-Log ("Couldn't write the status file: " + (Get-ErrText $_)) 'WARN' }
 }
@@ -1017,7 +1017,7 @@ function Invoke-Backup([switch]$Manual) {
         $root = PathJoin $drive.Root $folderName
         $currentRoot = PathJoin $root $script:CurrentName
         $versionsRoot = PathJoin $root $script:VersionsName
-        if (-not [System.IO.Directory]::Exists((LP $root))) { Write-Log ("The backup folder was missing on the drive, so it was created again: " + $root) 'WARN' }
+        if (-not [System.IO.Directory]::Exists((ToLongPath $root))) { Write-Log ("The backup folder was missing on the drive, so it was created again: " + $root) 'WARN' }
         Ensure-Dir $currentRoot
         Ensure-Dir $versionsRoot
         $probe = PathJoin $root ('write-test-' + $PID + '.kgtmp')
@@ -1038,7 +1038,7 @@ function Invoke-Backup([switch]$Manual) {
         $r = Invoke-Sync -SourceRoot $docs -CurrentRoot $currentRoot -VersionsRoot $versionsRoot -RunTime $started -Fat $fat -DeepVerifyCount $deep
         $secs = [int]((Get-Date) - $started).TotalSeconds
         Write-StatusFiles $root $drive.Root $docs $r
-        if ([System.IO.File]::Exists((LP (PathJoin $root 'How to Restore.txt'))) -eq $false -or $Manual) { Write-RestoreGuide $root }
+        if ([System.IO.File]::Exists((ToLongPath (PathJoin $root 'How to Restore.txt'))) -eq $false -or $Manual) { Write-RestoreGuide $root }
 
         $summary = Get-ResultText $r
         if ($r.Aborted) {
@@ -1126,13 +1126,13 @@ function Invoke-SelfTest {
             param([string]$rel, [string]$text, [datetime]$when)
             $p = PathJoin $src $rel
             Ensure-Dir (Get-Parent $p)
-            if ([System.IO.File]::Exists((LP $p))) { [System.IO.File]::SetAttributes((LP $p), [System.IO.FileAttributes]::Normal) }
-            [System.IO.File]::WriteAllText((LP $p), $text)
-            [System.IO.File]::SetLastWriteTimeUtc((LP $p), $when.ToUniversalTime())
+            if ([System.IO.File]::Exists((ToLongPath $p))) { [System.IO.File]::SetAttributes((ToLongPath $p), [System.IO.FileAttributes]::Normal) }
+            [System.IO.File]::WriteAllText((ToLongPath $p), $text)
+            [System.IO.File]::SetLastWriteTimeUtc((ToLongPath $p), $when.ToUniversalTime())
         }
-        $read = { param([string]$p) if ([System.IO.File]::Exists((LP $p))) { return [System.IO.File]::ReadAllText((LP $p)) }; return $null }
-        $has = { param([string]$p) return [System.IO.File]::Exists((LP $p)) }
-        $hasDir = { param([string]$p) return [System.IO.Directory]::Exists((LP $p)) }
+        $read = { param([string]$p) if ([System.IO.File]::Exists((ToLongPath $p))) { return [System.IO.File]::ReadAllText((ToLongPath $p)) }; return $null }
+        $has = { param([string]$p) return [System.IO.File]::Exists((ToLongPath $p)) }
+        $hasDir = { param([string]$p) return [System.IO.Directory]::Exists((ToLongPath $p)) }
 
         $uni = 'Caf' + [char]0x00E9 + ' ' + [char]0x2014 + ' notes ' + [char]0x2713 + '.txt'
         & $put 'Chapter 1.docx' 'Chapter one, first draft.' $t0
@@ -1342,7 +1342,7 @@ function Invoke-PostInstallCheck([string]$Docs, [string]$CurrentRoot) {
                 $result.Tried++
                 try {
                     $restored = PathJoin $tmpDir ('restored-' + $k + '.bin')
-                    [System.IO.File]::Copy((LP (PathJoin $CurrentRoot $rel)), (LP $restored), $true)
+                    [System.IO.File]::Copy((ToLongPath (PathJoin $CurrentRoot $rel)), (ToLongPath $restored), $true)
                     if ((Get-Sha256 $restored) -eq (Get-Sha256 (PathJoin $Docs $rel))) { $result.Restored++ }
                     else { Write-Log ("Restore test: '" + $rel + "' differs from the original (it may have just been edited).") 'WARN' }
                 } catch { Write-Log ("Restore test could not check '" + $rel + "': " + (Get-ErrText $_)) 'WARN' }
