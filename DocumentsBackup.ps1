@@ -1,6 +1,6 @@
 <#
     Knight Logics - Documents Backup
-    Version 1.0.2
+    Version 1.0.3
 
     Keeps a plain, readable copy of the Documents folder on the external backup drive:
 
@@ -28,7 +28,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$script:Version      = '1.0.2'
+$script:Version      = '1.0.3'
 $script:TaskName     = 'Knight Logics - Documents Backup'
 $script:RunKeyName   = 'KnightLogicsDocumentsBackup'
 $script:AppDir       = Join-Path $env:LOCALAPPDATA 'KnightLogics\DocumentsBackup'
@@ -135,14 +135,14 @@ function Get-Sha256([string]$P) {
     }
 }
 
-function Write-Log([string]$Message, [string]$Level = 'INFO') {
+function Write-Log([string]$Message, [string]$Level = 'INFO', [switch]$Quiet) {
     $line = '{0} [{1}] {2}' -f (Get-Date).ToString('yyyy-MM-dd HH:mm:ss', $script:Inv), $Level, $Message
     try {
         Ensure-Dir $script:LogDir
         $file = PathJoin $script:LogDir ('backup-' + (Get-Date).ToString('yyyy-MM', $script:Inv) + '.log')
         [System.IO.File]::AppendAllText($file, $line + "`r`n")
     } catch {}
-    if ($script:Interactive) {
+    if ($script:Interactive -and -not $Quiet) {
         $color = 'Gray'
         if ($Level -eq 'WARN') { $color = 'Yellow' }
         if ($Level -eq 'ERROR') { $color = 'Red' }
@@ -233,6 +233,7 @@ function Get-Tree([string]$Root, [switch]$NoExclude) {
     $temps  = [System.Collections.Generic.List[string]]::new()
     $errors = [System.Collections.Generic.List[string]]::new()
     $stack  = [System.Collections.Generic.Stack[string]]::new()
+    $reparse = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
     $stack.Push('')
     while ($stack.Count -gt 0) {
         $rel = $stack.Pop()
@@ -243,12 +244,20 @@ function Get-Tree([string]$Root, [switch]$NoExclude) {
             $fis = $di.GetFiles()
         } catch {
             $failed.Add($rel)
-            $errors.Add(("Couldn't read the folder '{0}': {1}" -f $full, (Get-ErrText $_)))
+            # A link-type folder that can't be opened is not part of the user's files - skip quietly.
+            if (-not $reparse.Contains($rel)) { $errors.Add(("Couldn't read the folder '{0}': {1}" -f $full, (Get-ErrText $_))) }
             continue
         }
         foreach ($d in $subs) {
             if ($rel) { $cr = $rel + '\' + $d.Name } else { $cr = $d.Name }
-            if (((([int]$d.Attributes) -band 0x400) -ne 0) -and (Test-LinkFolder $d.FullName)) { continue }
+            $attr = [int]$d.Attributes
+            if (($attr -band 0x400) -ne 0) {
+                # Reparse point. Skip junctions/links, including Windows' hidden+system "My Music",
+                # "My Pictures" and "My Videos" links inside Documents. OneDrive cloud folders are
+                # reparse points too but are normal folders, so they are kept.
+                if ((($attr -band 0x6) -eq 0x6) -or (Test-LinkFolder $d.FullName)) { continue }
+                [void]$reparse.Add($cr)
+            }
             [void]$dirs.Add($cr)
             $stack.Push($cr)
         }
@@ -750,7 +759,7 @@ function Write-StatusFiles([string]$BackupRoot, [string]$DriveRoot, [string]$Doc
 }
 
 # ----------------------------------------------------------------------------------------------
-# Reminders (Windows notifications) - only when something needs Stephen's attention
+# Reminders (Windows notifications) - only when something needs the user's attention
 # ----------------------------------------------------------------------------------------------
 
 function Show-Reminder([string]$Title, [string]$Body) {
@@ -1150,6 +1159,11 @@ function Invoke-SelfTest {
         [System.IO.File]::SetAttributes((PathJoin $src 'ReadOnly.txt'), [System.IO.FileAttributes]::ReadOnly)
         Ensure-Dir (PathJoin $src 'Empty Folder')
         $longRel = (@(1..6 | ForEach-Object { 'Long folder name number ' + $_ + ' for testing paths' }) -join '\') + '\Deep file.txt'
+        $elsewhere = PathJoin $root 'Elsewhere'
+        Ensure-Dir $elsewhere
+        [System.IO.File]::WriteAllText((PathJoin $elsewhere 'Not mine.txt'), 'outside Documents')
+        $junctionMade = $true
+        try { New-Item -ItemType Junction -Path (PathJoin $src 'Linked Folder') -Value $elsewhere -ErrorAction Stop | Out-Null } catch { $junctionMade = $false }
         $longMade = $true
         try { & $put $longRel 'deep' $t0 } catch { $longMade = $false }
 
@@ -1163,6 +1177,7 @@ function Invoke-SelfTest {
         & $check (& $has (PathJoin $cur 'Hidden.txt')) 'hidden files copied'
         & $check (& $has (PathJoin $cur 'ReadOnly.txt')) 'read-only files copied'
         & $check (& $hasDir (PathJoin $cur 'Empty Folder')) 'empty folders kept'
+        if ($junctionMade) { & $check (-not (& $hasDir (PathJoin $cur 'Linked Folder'))) 'linked folders (like the hidden My Music link) are skipped without errors' }
         & $check (@(Get-ChildItem -LiteralPath $ver -Force).Count -eq 0) 'no previous versions after the first backup'
         & $check ([System.IO.File]::GetLastWriteTimeUtc((PathJoin $cur 'Chapter 1.docx')) -eq [System.IO.File]::GetLastWriteTimeUtc((PathJoin $src 'Chapter 1.docx'))) 'file dates preserved'
         $unexpected = @($r1.Errors | Where-Object { $_ -notlike '*Long folder name*' })
@@ -1253,7 +1268,7 @@ function Invoke-SelfTest {
     if ($res.Failed -gt 0) { $color = 'Red' }
     Write-Host ('  Self-test: {0} passed, {1} failed' -f $res.Passed, $res.Failed) -ForegroundColor $color
     foreach ($n in $res.Notes) { Write-Host ('    ' + $n) }
-    Write-Log ('Self-test: {0} passed, {1} failed. {2}' -f $res.Passed, $res.Failed, ($res.Notes -join ' '))
+    Write-Log ('Self-test: {0} passed, {1} failed. {2}' -f $res.Passed, $res.Failed, ($res.Notes -join ' ')) -Quiet
     return $res
 }
 
@@ -1472,7 +1487,7 @@ function Invoke-Install {
     Write-Host '   Self-repair:      restores its schedule if removed, retries files in use, finds the drive'
     Write-Host '                     if its letter changes, and reminds you if the drive is unplugged 3+ days'
     Write-Host ''
-    Write-Log ('Setup finished. Backup folder: ' + $root + '. Automatic run test: ' + $launch)
+    Write-Log ('Setup finished. Backup folder: ' + $root + '. Automatic run test: ' + $launch) -Quiet
 }
 
 function Show-Status {
